@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="Valorant Champions Range - Streamlit",
+    page_title="Valorant Champions Range - Full Auto",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -17,15 +17,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.title("🏆 CHAMPIONS AIM RANGE")
-    st.write("Mô phỏng góc nhìn tay phải (Right-handed), skin súng **Champions Vandal** vàng kim và bản đồ Ascent!")
+    st.title("🏆 CHAMPIONS VANDAL RANGE")
+    st.write("Phiên bản cập nhật hình ảnh súng chuẩn HD và chế độ xả đạn tự động (Full Auto Spray)!")
     st.markdown("---")
     st.subheader("🎮 Hướng dẫn")
-    st.write("1. Bắn vào **ĐẦU BOT (Headshot)** để hạ ngay + âm thanh Champions Kill!")
-    st.write("2. Tay cầm súng bên phải (Right Hand) góc nhìn FPS chuẩn Valorant.")
-    st.write("3. Bối cảnh bản đồ Ascent (Cổng vòm & hoa văn gạch đắp).")
+    st.write("1. **Giữ chuột trái (Hold Mouse)**: Sấy đạn liên tục (Full-Auto) giống hệt súng Vandal thật.")
+    st.write("2. Kê tâm ngắm vào **ĐẦU BOT (Headshot)** để tiêu diệt ngay lập tức!")
+    st.write("3. Hình ảnh skin **Champions Vandal (Đen - Vàng Kim)** HD cực kỳ sắc nét.")
 
-st.title("🏆 Valorant Range - Champions Vandal Edition")
+st.title("🏆 Valorant Range - Champions Vandal (Full Auto Spray)")
 
 game_html = """
 <!DOCTYPE html>
@@ -93,7 +93,7 @@ game_html = """
 
     <div id="menu-overlay">
         <h1 id="menu-title">CHAMPIONS VANDAL RANGE</h1>
-        <p id="menu-subtitle">Trải nghiệm góc nhìn tay phải & skin Champions Vandal</p>
+        <p id="menu-subtitle">Giữ chuột để sấy đạn liên tục với súng Champions Vandal HD</p>
         
         <div id="final-stats" class="stats-card" style="display: none;">
             <h3>KẾT QUẢ TẬP LUYỆN</h3>
@@ -114,10 +114,13 @@ game_html = """
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Tải hình ảnh súng Champions Vandal chuẩn
+const gunImg = new Image();
+gunImg.src = 'https://images.contentstack.io/v3/assets/bltb6540380da7ba7e0/blt1cb3eefcfdd624bf/6110f06a1953ce3575916327/Champions_Vandal.png';
+
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
-// Âm thanh Vandal & Âm thanh hạ gục Champions Kill đặc trưng
 function playSound(type) {
     if (!audioCtx) audioCtx = new AudioContext();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -128,14 +131,13 @@ function playSound(type) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(280, now);
-        osc.frequency.exponentialRampToValueAtTime(30, now + 0.11);
-        gain.gain.setValueAtTime(0.35, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.11);
+        osc.frequency.setValueAtTime(290, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.09);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
         osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(now); osc.stop(now + 0.11);
+        osc.start(now); osc.stop(now + 0.09);
     } else if (type === 'champions_headshot') {
-        // Hợp âm hào hùng chuẩn âm thanh Champions Kill
         [1046.5, 1318.5, 1567.98].forEach((freq, idx) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -153,6 +155,12 @@ let gameState = 'MENU';
 let score = 0, headshots = 0, totalShots = 0, hits = 0, timeLeft = 30;
 let timerInterval = null;
 let gunRecoilY = 0, muzzleFlash = 0;
+
+// Xử lý giữ chuột sấy đạn (Full Auto)
+let isMouseDown = false;
+let lastShotTime = 0;
+const fireRateMs = 100; // Tốc độ bắn (~10 viên/giây)
+let currentMousePos = { x: 450, y: 300 };
 
 let bots = [], particles = [], floatingTexts = [];
 
@@ -271,7 +279,8 @@ function startGame() {
 }
 
 function endGame() {
-    gameState = 'END'; clearInterval(timerInterval);
+    gameState = 'END'; isMouseDown = false;
+    clearInterval(timerInterval);
     document.getElementById('menu-overlay').style.display = 'flex';
     document.getElementById('menu-title').innerText = 'HOÀN THÀNH!';
     document.getElementById('start-btn').innerText = 'CHƠI LẠI';
@@ -285,17 +294,11 @@ function endGame() {
     document.getElementById('final-stats').style.display = 'block';
 }
 
-canvas.addEventListener('mousedown', (e) => {
-    if (gameState !== 'PLAYING') return;
-
+function shoot(mx, my) {
     totalShots++;
-    gunRecoilY = 16;
-    muzzleFlash = 4;
+    gunRecoilY = 14;
+    muzzleFlash = 3;
     playSound('vandal');
-
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
 
     let hitAny = false;
 
@@ -311,7 +314,7 @@ canvas.addEventListener('mousedown', (e) => {
                 particles.push(new Particle(mx, my, '#facc15'));
                 particles.push(new Particle(mx, my, '#ffffff'));
             }
-            floatingTexts.push(new FloatingText('CHAMPIONS HEADSHOT!', mx, my, '#facc15'));
+            floatingTexts.push(new FloatingText('HEADSHOT!', mx, my, '#facc15'));
 
             bots.splice(i, 1); spawnBot(); break;
         } else if (hitType === 'BODY') {
@@ -328,111 +331,82 @@ canvas.addEventListener('mousedown', (e) => {
     }
 
     updateHUD();
+}
+
+// Xử lý giữ chuột trái để sấy đạn (Auto Spray)
+canvas.addEventListener('mousedown', (e) => {
+    if (gameState !== 'PLAYING') return;
+    isMouseDown = true;
+    const rect = canvas.getBoundingClientRect();
+    currentMousePos.x = e.clientX - rect.left;
+    currentMousePos.y = e.clientY - rect.top;
+    
+    shoot(currentMousePos.x, currentMousePos.y);
+    lastShotTime = Date.now();
 });
 
-// Vẽ skin Champions Vandal (Đen - Vàng kim - Tay phải chuẩn Valorant)
+window.addEventListener('mouseup', () => { isMouseDown = false; });
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    currentMousePos.x = e.clientX - rect.left;
+    currentMousePos.y = e.clientY - rect.top;
+});
+
+// Vẽ hình ảnh súng Champions Vandal HD
 function drawChampionsVandal() {
     ctx.save();
     if (gunRecoilY > 0) gunRecoilY -= 2;
 
-    // Tọa độ góc dưới bên phải
-    const gunX = canvas.width - 240;
-    const gunY = canvas.height - 110 + gunRecoilY;
+    const gunWidth = 420;
+    const gunHeight = 180;
+    const gunX = canvas.width - 380;
+    const gunY = canvas.height - 180 + gunRecoilY;
 
-    // 1. Muzzle Flash (Tia lửa nòng)
+    // 1. Muzzle Flash (Tia lửa nòng súng)
     if (muzzleFlash > 0) {
         muzzleFlash--;
         ctx.beginPath();
-        ctx.arc(gunX - 120, gunY - 40, 24, 0, Math.PI * 2);
+        ctx.arc(gunX + 30, gunY + 35, 26, 0, Math.PI * 2);
         ctx.fillStyle = '#fef08a';
-        ctx.shadowColor = '#eab308'; ctx.shadowBlur = 25;
+        ctx.shadowColor = '#eab308'; ctx.shadowBlur = 30;
         ctx.fill();
     }
 
     ctx.shadowColor = 'transparent';
 
-    // Đầu nòng súng Vandal
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(gunX - 120, gunY - 44, 40, 8);
-    ctx.fillStyle = '#eab308';
-    ctx.fillRect(gunX - 110, gunY - 45, 10, 10);
-
-    // Thân súng chính (Champions Black Armor)
-    ctx.beginPath();
-    ctx.moveTo(gunX - 80, gunY - 48);
-    ctx.lineTo(gunX + 130, gunY - 15);
-    ctx.lineTo(gunX + 130, gunY + 90);
-    ctx.lineTo(gunX - 20, gunY + 70);
-    ctx.lineTo(gunX - 50, gunY - 10);
-    ctx.closePath();
-    ctx.fillStyle = '#0f172a'; ctx.fill();
-
-    // Hoa văn Vàng Kim (Champions Gold Pattern)
-    ctx.beginPath();
-    ctx.moveTo(gunX - 60, gunY - 42);
-    ctx.lineTo(gunX + 30, gunY - 30);
-    ctx.lineTo(gunX + 10, gunY + 10);
-    ctx.lineTo(gunX - 40, gunY - 10);
-    ctx.closePath();
-    ctx.fillStyle = '#eab308'; ctx.fill();
-
-    // Chữ CHAMPIONS phát sáng
-    ctx.font = 'italic bold 14px Segoe UI';
-    ctx.fillStyle = '#fef08a';
-    ctx.shadowColor = '#eab308'; ctx.shadowBlur = 10;
-    ctx.fillText('CHAMPIONS', gunX + 20, gunY + 5);
-
-    // Băng đạn (Magazine)
-    ctx.shadowColor = 'transparent';
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.moveTo(gunX - 10, gunY + 20);
-    ctx.lineTo(gunX - 30, gunY + 75);
-    ctx.lineTo(gunX - 10, gunY + 80);
-    ctx.lineTo(gunX + 10, gunY + 25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#eab308'; ctx.lineWidth = 2; ctx.stroke();
-
-    // Bàn tay nhân viên / Đặc vụ cầm súng (Right Hand View)
-    ctx.fillStyle = '#334155';
-    ctx.beginPath();
-    ctx.arc(gunX + 80, gunY + 45, 22, 0, Math.PI * 2);
-    ctx.fill();
+    // 2. Vẽ hình ảnh thật của súng Champions Vandal
+    if (gunImg.complete) {
+        ctx.drawImage(gunImg, gunX, gunY, gunWidth, gunHeight);
+    }
 
     ctx.restore();
 }
 
-// Bối cảnh bản đồ Ascent (Cổng vòm + Mái che màu hồng + Tường gạch)
+// Bối cảnh bản đồ Ascent
 function drawAscentMap() {
-    // 1. Tường gạch đất nung Ascent
     ctx.fillStyle = '#9a3412';
     ctx.fillRect(0, 0, canvas.width, 380);
 
-    // Mái che vải màu hồng nhạt (Pink Canopy) góc trên
     ctx.fillStyle = '#f43f5e';
     ctx.beginPath();
     ctx.moveTo(150, 0); ctx.lineTo(750, 0);
     ctx.lineTo(700, 70); ctx.lineTo(200, 70);
     ctx.closePath(); ctx.fill();
 
-    // 2. Cổng vòm đá chính giữa (Archway)
     ctx.fillStyle = '#cbd5e1';
     ctx.beginPath();
     ctx.arc(450, 260, 80, Math.PI, 0);
     ctx.rect(370, 260, 160, 120);
     ctx.fill();
 
-    // Phông nền tối trong lòng cổng vòm
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(382, 260, 136, 120);
 
-    // Cột trụ đá hai bên
     ctx.fillStyle = '#e2e8f0';
     ctx.fillRect(80, 60, 60, 320);
     ctx.fillRect(760, 60, 60, 320);
 
-    // Sàn đá lát gạch
     let grad = ctx.createLinearGradient(0, 380, 0, canvas.height);
     grad.addColorStop(0, '#475569');
     grad.addColorStop(1, '#0f172a');
@@ -446,6 +420,12 @@ function gameLoop() {
     drawAscentMap();
 
     if (gameState === 'PLAYING') {
+        // Xử lý sấy đạn liên tục khi giữ chuột
+        if (isMouseDown && Date.now() - lastShotTime >= fireRateMs) {
+            shoot(currentMousePos.x, currentMousePos.y);
+            lastShotTime = Date.now();
+        }
+
         bots.forEach(b => b.draw());
 
         for (let i = particles.length - 1; i >= 0; i--) {
